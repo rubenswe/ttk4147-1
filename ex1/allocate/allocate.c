@@ -8,7 +8,11 @@ Minnebruken bare øker og øker i top
 
 void allocate(int value) {
     int *ptr = NULL;
-    ptr = (int*) malloc(100000 * sizeof(int));
+    if ((ptr = (int*) malloc(100000 * sizeof(int))) == NULL) {
+        perror("Error");
+        return;
+    }
+
     *ptr = value;
     printf("Memory allocated\n");
 } 
