@@ -2,6 +2,8 @@
 #include <signal.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <sched.h>
+#include <pthread.h>
 
 #include <native/task.h>
 #include <native/timer.h>
@@ -29,10 +31,18 @@ void periodicPrint()
 	}
 }
 
-/*
+int set_cpu(int cpu_number)
+{
+	// setting cpu set to the selected cpu
+	cpu_set_t cpu;
+	CPU_ZERO(&cpu);
+	CPU_SET(cpu_number, &cpu);
+	// set cpu set to current thread and return
+	return pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpu);
+}
 
 void* disturbance() {
-	set_cpu(CPU_CORE);
+	set_cpu(1);
 	double i, j, k;
 	while(1) {
 		i++;
@@ -41,8 +51,6 @@ void* disturbance() {
 		k++;
 	}
 }
-
-*/
 
 
 void catch_signal(int sig) {
@@ -63,13 +71,14 @@ void wait_for_ctrl_c() {
 void periodicTest(void* num_param) {
 	int num = (long) num_param;
 	io_write(num, 1);
-	rt_task_set_periodic(NULL, TM_NOW, 1000000);
+	rt_task_set_periodic(NULL, TM_NOW, 10000);
 	
 	while(1) {
-		while (io_read(num));
-		printf("hei fra periodic task\n");
+		while (io_read(num)) {
+			rt_task_wait_period(NULL);
+		}
 		io_write(num, 0);
-		rt_task_wait_period(NULL);
+		usleep(5);
 		io_write(num, 1);
 	}
 }
@@ -79,18 +88,20 @@ void periodicTest(void* num_param) {
 
 int main ()
 {
+	io_init();
 	RT_TASK test[3];
 	mlockall(MCL_CURRENT|MCL_FUTURE);
-	
+	char name[10];
 	long i;
 	for (i = 1; i <= 3; i++) {
-    	rt_task_create(&test[i-1], (char*) i, 0, 99, T_CPU(1)|T_JOINABLE);
-    	rt_task_start(&test[i-1], &periodicPrint, (void*) i);
+		sprintf(name, "test%lu", i);
+    	rt_task_create(&test[i-1], name, 0, i, T_CPU(1)|T_JOINABLE);
+    	rt_task_start(&test[i-1], &periodicTest, (void*) i);
     }
     
    
     
-    /*
+    
 	pthread_t disturbances[10];
     
     for (i = 0; i < 10; i++) {
@@ -99,7 +110,7 @@ int main ()
 	for (i = 0; i < 10; i++) {
 		pthread_join(disturbances[i], NULL);
 	}
-	*/
+
 	wait_for_ctrl_c();
 	
 	return 0;
