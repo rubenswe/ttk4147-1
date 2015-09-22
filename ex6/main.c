@@ -71,7 +71,7 @@ void wait_for_ctrl_c() {
 void periodicTest(void* num_param) {
 	int num = (long) num_param;
 	io_write(num, 1);
-	rt_task_set_periodic(NULL, TM_NOW, 10000);
+	rt_task_set_periodic(NULL, TM_NOW, 1);
 	
 	while(1) {
 		while (io_read(num)) {
