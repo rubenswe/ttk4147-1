@@ -18,6 +18,9 @@ RT_SEM sem;
 
 static RT_MUTEX A;
 static RT_MUTEX B;
+RT_TASK low, high;
+
+#define CEILING 20
 
 void busy_wait_ms(unsigned long delay){
 	unsigned long count = 0;
@@ -34,6 +37,7 @@ int rt_task_sleep_ms(unsigned long delay){
 void lowFunc() {
 	rt_sem_p(&sem, TM_INFINITE);
 	rt_mutex_acquire(&A, TM_INFINITE);
+	rt_task_set_priority(&low, CEILING);
 	rt_printf("low locks A\n");
 	busy_wait_ms(100);
 	busy_wait_ms(100);
@@ -46,6 +50,7 @@ void lowFunc() {
 	rt_mutex_release(&B);
 	rt_printf("low unlocks B\n");
 	rt_mutex_release(&A);
+	rt_task_set_priority(&low, 10);
 	rt_printf("low unlocks A\n");
 	busy_wait_ms(100);
 }
@@ -76,10 +81,11 @@ void syncFunc() {
 int main() {
 	mlockall(MCL_CURRENT|MCL_FUTURE);
 	rt_print_auto_init(1);
+
+	RT_TASK sync;
 	
-	RT_TASK low, high, sync;
 	rt_task_create(&low, "low", 0, 10, T_CPU(1)|T_JOINABLE);
-	rt_task_create(&high, "high", 0, 30, T_CPU(1)|T_JOINABLE);
+	rt_task_create(&high, "high", 0, 20, T_CPU(1)|T_JOINABLE);
 	rt_task_create(&sync, "sync", 0, 99, T_CPU(1)|T_JOINABLE);
 	
 
